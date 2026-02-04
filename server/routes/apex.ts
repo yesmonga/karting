@@ -66,15 +66,20 @@ function parseComments(html: string): Comment[] {
 
 function parseGridHtml(html: string): Driver[] {
     const drivers: Driver[] = [];
-    const rowRegex = /<tr[^>]*data-id="r(\d+)"[^>]*data-pos="(\d+)"[^>]*>([\s\S]*?)<\/tr>/gi;
+    // Regex plus souple qui cherche juste les tr avec data-id="r..."
+    const rowRegex = /<tr[^>]*data-id="r(\d+)"[^>]*>([\s\S]*?)<\/tr>/gi;
     let rowMatch;
 
     while ((rowMatch = rowRegex.exec(html)) !== null) {
         const rowId = rowMatch[1];
-        const dataPos = rowMatch[2];
-        const rowHtml = rowMatch[3];
+        const rowHtml = rowMatch[2];
 
-        if (rowId === '0' || dataPos === '0' || rowMatch[0].includes('class="head"')) continue;
+        // Ignorer les headers ou templates (souvent id=0)
+        if (rowId === '0' || rowHtml.includes('class="head"')) continue;
+
+        let dataPos = '99';
+        const posAttrMatch = rowMatch[0].match(/data-pos="(\d+)"/);
+        if (posAttrMatch) dataPos = posAttrMatch[1];
 
         const driver: Driver = {
             driverId: rowId,
@@ -216,10 +221,18 @@ router.post('/live', async (req, res) => {
                                 }
                                 break;
                             case 'grid':
+                                console.log(`Received grid (length: ${val.length})`);
+                                if (val.length < 100) console.log('Grid preview:', val);
+
                                 data.drivers = parseGridHtml(val);
-                                clearTimeout(timeout);
-                                ws.close();
-                                resolve(data);
+                                console.log(`Parsed ${data.drivers.length} drivers`);
+
+                                // Resolve if we have drivers OR if it's been a few seconds and we have other data
+                                if (data.drivers.length > 0) {
+                                    clearTimeout(timeout);
+                                    ws.close();
+                                    resolve(data);
+                                }
                                 break;
                         }
                     });
