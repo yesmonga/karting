@@ -82,7 +82,21 @@ export default function OnboardPage() {
     );
   }
 
-  return (
+  // Detecter l'orientation pour forcer le paysage en CSS si nécessaire
+  const [isPortrait, setIsPortrait] = useState(false);
+
+  useEffect(() => {
+    const checkOrientation = () => {
+      // Si la largeur est inférieure à la hauteur, on est en portrait
+      setIsPortrait(window.innerWidth < window.innerHeight);
+    };
+
+    checkOrientation();
+    window.addEventListener('resize', checkOrientation);
+    return () => window.removeEventListener('resize', checkOrientation);
+  }, []);
+
+  const content = (
     <OnboardDisplay
       myDriver={myDriver}
       myDetails={myDetails}
@@ -93,4 +107,28 @@ export default function OnboardPage() {
       onChangeKart={() => setSelectedKart('')}
     />
   );
+
+  // Si on est en portrait, on force la rotation CSS
+  if (isPortrait) {
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: '100vw', // On déplace l'origine au coin haut-droit
+          width: '100vh', // La largeur devient la hauteur de l'écran
+          height: '100vw', // La hauteur devient la largeur de l'écran
+          transform: 'rotate(90deg)',
+          transformOrigin: 'top left',
+          backgroundColor: '#000',
+          zIndex: 9999,
+          overflow: 'hidden',
+        }}
+      >
+        {content}
+      </div>
+    );
+  }
+
+  return content;
 }
