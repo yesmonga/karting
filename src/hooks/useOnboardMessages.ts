@@ -1,14 +1,6 @@
 import { useState, useEffect } from 'react';
-import { onboardMessages } from '@/lib/api';
+import { onboardMessages, type OnboardMessage } from '@/lib/api';
 import { MOCK_CONFIG, subscribeMockMessages } from '@/data/mockRaceData';
-
-interface OnboardMessage {
-  id: string;
-  kart_number: string;
-  text: string;
-  created_at: string;
-  session_id: string | null;
-}
 
 export function useOnboardMessages(kartNumber: string, sessionId?: string) {
   const [messages, setMessages] = useState<OnboardMessage[]>([]);
