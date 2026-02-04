@@ -147,6 +147,7 @@ router.post('/live', async (req, res) => {
             'rko-angerville': { host: 'www.apex-timing.com', wsPort: 8953, name: 'RKO Angerville' },
             'lemans-karting': { host: 'www.apex-timing.com', wsPort: 8953, name: 'Le Mans Karting' },
             'paris-kart': { host: 'www.apex-timing.com', wsPort: 8953, name: 'Paris Kart Indoor' },
+            'wind-circuit': { host: 'www.apex-timing.com', wsPort: 8953, name: 'Wind Circuit (Test)' },
         };
 
         const circuit = circuits[circuitId];
