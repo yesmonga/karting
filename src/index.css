@@ -1,0 +1,235 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Racing Dark Theme */
+    --background: 0 0% 2%;
+    --foreground: 0 0% 98%;
+
+    --card: 0 0% 5%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 0 0% 5%;
+    --popover-foreground: 0 0% 98%;
+
+    /* Racing Red Primary */
+    --primary: 0 84% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Dark Secondary */
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 60%;
+
+    --accent: 0 72% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 0 84% 50%;
+
+    --radius: 0.75rem;
+
+    /* Custom Racing Colors */
+    --racing-red: 0 84% 50%;
+    --racing-red-glow: 0 84% 60%;
+    --racing-dark: 0 0% 4%;
+    --racing-card: 0 0% 8%;
+    
+    /* Driver Colors */
+    --driver-evan: 0 84% 54%;
+    --driver-enzo: 217 91% 60%;
+    --driver-idriss: 158 64% 52%;
+    --driver-alex: 38 92% 50%;
+
+    /* Glassmorphism */
+    --glass-bg: 0 0% 9%;
+    --glass-border: 0 0% 20%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+    background: linear-gradient(180deg, hsl(0 0% 2%) 0%, hsl(0 0% 4%) 100%);
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Orbitron', monospace;
+  }
+}
+
+@layer utilities {
+  /* Racing Glow Effects */
+  .glow-red {
+    box-shadow: 0 0 20px hsl(var(--racing-red) / 0.4), 0 0 40px hsl(var(--racing-red) / 0.2);
+  }
+  
+  .glow-red-subtle {
+    box-shadow: 0 0 15px hsl(var(--racing-red) / 0.3);
+  }
+  
+  .glow-red-intense {
+    box-shadow: 0 0 30px hsl(var(--racing-red) / 0.5), 0 0 60px hsl(var(--racing-red) / 0.3);
+  }
+  
+  /* Glass Card Effect */
+  .glass-card {
+    @apply backdrop-blur-xl border border-border/30;
+    background: linear-gradient(135deg, hsl(var(--glass-bg) / 0.9) 0%, hsl(var(--glass-bg) / 0.7) 100%);
+  }
+  
+  .glass-card-hover {
+    @apply glass-card transition-all duration-300;
+  }
+  
+  .glass-card-hover:hover {
+    @apply border-primary/30;
+    box-shadow: 0 0 30px hsl(var(--racing-red) / 0.15);
+  }
+  
+  /* Racing Gradients */
+  .gradient-racing {
+    background: linear-gradient(135deg, hsl(var(--racing-red)) 0%, hsl(0 72% 35%) 100%);
+  }
+  
+  .gradient-racing-dark {
+    background: linear-gradient(180deg, hsl(0 0% 6%) 0%, hsl(0 0% 3%) 100%);
+  }
+  
+  .gradient-text-racing {
+    @apply bg-clip-text text-transparent;
+    background: linear-gradient(135deg, hsl(25 100% 60%) 0%, hsl(0 84% 55%) 100%);
+    -webkit-background-clip: text;
+  }
+  
+  /* Animated Border */
+  .border-glow {
+    position: relative;
+  }
+  
+  .border-glow::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, hsl(var(--racing-red) / 0.5), transparent, hsl(var(--racing-red) / 0.3));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+  }
+  
+  /* Racing Font */
+  .font-racing {
+    font-family: 'Orbitron', monospace;
+  }
+  
+  /* Status Indicators */
+  .status-live {
+    @apply w-2.5 h-2.5 rounded-full bg-green-500;
+    animation: pulse-live 2s ease-in-out infinite;
+  }
+  
+  @keyframes pulse-live {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 hsl(142 71% 45% / 0.7); }
+    50% { opacity: 0.8; box-shadow: 0 0 0 8px hsl(142 71% 45% / 0); }
+  }
+  
+  /* Sector Colors */
+  .sector-best {
+    @apply text-purple-400;
+  }
+  
+  .sector-good {
+    @apply text-green-400;
+  }
+  
+  .sector-neutral {
+    @apply text-foreground;
+  }
+  
+  .sector-bad {
+    @apply text-yellow-400;
+  }
+  
+  /* Driver Color Classes */
+  .driver-evan { color: hsl(var(--driver-evan)); }
+  .driver-enzo { color: hsl(var(--driver-enzo)); }
+  .driver-idriss { color: hsl(var(--driver-idriss)); }
+  .driver-alex { color: hsl(var(--driver-alex)); }
+  
+  .bg-driver-evan { background-color: hsl(var(--driver-evan)); }
+  .bg-driver-enzo { background-color: hsl(var(--driver-enzo)); }
+  .bg-driver-idriss { background-color: hsl(var(--driver-idriss)); }
+  .bg-driver-alex { background-color: hsl(var(--driver-alex)); }
+  
+  /* Animations */
+  @keyframes slide-up {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 20px hsl(var(--racing-red) / 0.4); }
+    50% { box-shadow: 0 0 40px hsl(var(--racing-red) / 0.6); }
+  }
+  
+  .animate-slide-up {
+    animation: slide-up 0.5s ease-out forwards;
+  }
+  
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out forwards;
+  }
+  
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+  
+  /* Staggered animation delays */
+  .delay-100 { animation-delay: 100ms; }
+  .delay-200 { animation-delay: 200ms; }
+  .delay-300 { animation-delay: 300ms; }
+  .delay-400 { animation-delay: 400ms; }
+  .delay-500 { animation-delay: 500ms; }
+  
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: hsl(0 0% 8%);
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: hsl(0 0% 20%);
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(0 0% 30%);
+  }
+}

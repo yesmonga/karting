@@ -1,0 +1,13 @@
+project_id = "axgnpdyzkafdrfzahxsu"
+
+[functions.apex-scrape]
+verify_jwt = false
+
+[functions.apex-live]
+verify_jwt = false
+
+[functions.apex-team-details]
+verify_jwt = false
+
+[functions.auth-code]
+verify_jwt = false
