@@ -19,10 +19,16 @@ export function useOnboardMessages(kartNumber: string, sessionId?: string) {
       return unsubscribe;
     }
 
-    // Polling for messages in real environment since we don't have WebSockets yet
+    // Polling for messages in real environment
     const fetchMessages = async () => {
       try {
-        const data = await onboardMessages.getBySession(sessionId || 'all');
+        if (!sessionId) {
+          console.warn('Skipping message poll: No sessionId provided');
+          return;
+        }
+
+        console.log(`Polling messages for session: ${sessionId}`);
+        const data = await onboardMessages.getBySession(sessionId);
         if (data && data.length > 0) {
           // Filter by kartNumber client-side if needed (API returns by session)
           const kartMessages = data.filter(m => m.kart_number === kartNumber);
