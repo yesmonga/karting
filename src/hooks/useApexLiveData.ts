@@ -10,7 +10,7 @@ export function useApexLiveData(circuitId: string, refreshInterval: number = 300
 
   const fetchData = useCallback(async () => {
     // Mode mock : utiliser les données fictives
-    if (MOCK_CONFIG.enabled) {
+    if (MOCK_CONFIG.enabled || circuitId === 'wind-circuit') {
       setData(getMockLiveData());
       setError(null);
       setLoading(false);
