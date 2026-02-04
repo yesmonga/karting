@@ -1,9 +1,6 @@
 import express from 'express';
-import { fetchApexData, parseApexResponse } from './apex.js';
 
 const router = express.Router();
-
-// ... existing routes ...
 
 // Add this test route
 router.get('/test-connection', async (req, res) => {
@@ -27,20 +24,18 @@ router.get('/test-connection', async (req, res) => {
         }
 
         const text = await response.text();
-        console.log('Apex response received');
+        console.log('Apex response received, length:', text.length);
 
-        // 2. Parse response to see if we get valid JSON/Data
-        // Apex returns XML-like or JSON wrapped in something sometimes, or pure JSON
-        // Our existing logic in apex.ts handles this
-
-        const data = await parseApexResponse(text);
+        // 2. Simple validation
+        const hasData = text.length > 0 && (text.includes('driver') || text.includes('grid') || text.includes('class='));
 
         res.json({
             status: 'success',
             message: 'Successfully connected to Apex Timing',
             circuitId,
-            data_preview: data ? 'Data received' : 'No data',
-            raw_length: text.length
+            data_preview: hasData ? 'Data received containing expected tags' : 'Response received but might be empty/invalid',
+            response_length: text.length,
+            sample: text.substring(0, 100)
         });
 
     } catch (error) {
