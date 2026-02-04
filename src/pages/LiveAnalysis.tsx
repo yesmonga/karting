@@ -353,17 +353,18 @@ export default function LiveAnalysis() {
       );
 
     case 'loading':
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Connexion WebSocket à Apex Timing...</p>
-          <p className="text-xs text-muted-foreground mt-2 mb-4">Circuit: {config?.circuitId}</p>
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Connexion WebSocket à Apex Timing...</p>
+            <p className="text-xs text-muted-foreground mt-2 mb-4">Circuit: {config?.circuitId}</p>
 
-          <Button variant="outline" size="sm" onClick={() => setStep('setup')}>
-            Annuler et retourner au menu
-          </Button>
+            <Button variant="outline" size="sm" onClick={() => setStep('setup')}>
+              Annuler et retourner au menu
+            </Button>
+          </div>
         </div>
-      </div>
       );
 
     case 'select-team':
