@@ -129,6 +129,37 @@ export function OnboardDisplay({
   const bestS2 = myDetails?.bestSectors?.s2 || 0;
   const bestS3 = myDetails?.bestSectors?.s3 || 0;
 
+  // Helper to parse "23.456" or "1:03.456" into seconds
+  const parseSeconds = (str: string | undefined) => {
+    if (!str) return 0;
+    const clean = str.replace(/[^\d:.]/g, ''); // Remove emojis etc
+    if (clean.includes(':')) {
+      const parts = clean.split(':');
+      return (parseInt(parts[0]) * 60) + parseFloat(parts[1]);
+    }
+    return parseFloat(clean) || 0;
+  };
+
+  const s1Sec = parseSeconds(myDriver.s1);
+  const s2Sec = parseSeconds(myDriver.s2);
+  const s3Sec = parseSeconds(myDriver.s3);
+
+  // Heuristic: If S2 is significantly larger than S1 (> +50%), it's likely cumulative (Split 2)
+  // Logic: S2_Sector = S2_Cumulative - S1_Sector
+  let realS2Str = myDriver.s2;
+  if (s1Sec > 0 && s2Sec > s1Sec + 5) {
+    realS2Str = (s2Sec - s1Sec).toFixed(3);
+  }
+
+  // Heuristic: If S3 is significantly larger than S2 (> +20%), it's likely cumulative (Lap Time)
+  // Logic: S3_Sector = S3_Cumulative - S2_Cumulative
+  // Note: If S2 was cumulative, we use raw S2Sec. If S2 was sector, this logic might be tricky.
+  // Usually if S2 is cumulative, S3 is also cumulative (Lap).
+  let realS3Str = myDriver.s3;
+  if (s2Sec > 0 && s3Sec > s2Sec + 5) {
+    realS3Str = (s3Sec - s2Sec).toFixed(3);
+  }
+
   return (
     <div className="fixed inset-0 bg-black text-white overflow-hidden font-sans select-none p-2">
       {/* Settings Button */}
@@ -171,14 +202,13 @@ export function OnboardDisplay({
 
           {/* Row 2: Sectors S1 - S2 - S3 */}
           <div className="row-span-1 grid grid-cols-3 gap-2">
-            <div className="bg-card/10 rounded-lg border border-white/5 flex flex-col items-center justify-center">
+            {/* Secteurs */}
+            <div className="col-span-3 flex items-center justify-between bg-card/20 rounded-lg px-2 border border-white/5">
               <SectorDisplay label="S1" current={myDriver.s1} best={bestS1} />
-            </div>
-            <div className="bg-card/10 rounded-lg border border-white/5 flex flex-col items-center justify-center">
-              <SectorDisplay label="S2" current={myDriver.s2} best={bestS2} />
-            </div>
-            <div className="bg-card/10 rounded-lg border border-white/5 flex flex-col items-center justify-center">
-              <SectorDisplay label="S3" current={myDriver.s3} best={bestS3} />
+              <div className="w-px h-10 bg-white/10 mx-1"></div>
+              <SectorDisplay label="S2" current={realS2Str} best={bestS2} />
+              <div className="w-px h-10 bg-white/10 mx-1"></div>
+              <SectorDisplay label="S3" current={realS3Str} best={bestS3} />
             </div>
           </div>
         </div>
