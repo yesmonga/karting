@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, MessageSquare, Gauge, Settings } from 'lucide-react';
 import { ApexDriverData } from '@/types/live';
 import { TeamDetails } from '@/hooks/useTeamDetails';
-import { calculateRealSectors } from '@/utils/raceUtils';
+import { calculateRealSectors, parseTime } from '@/utils/raceUtils';
 
 interface OnboardDisplayProps {
   myDriver: ApexDriverData | null | undefined;
@@ -37,20 +37,19 @@ function SectorDisplay({
   best: number;
   overallBest?: number;
 }) {
-  // Nettoyer le temps des emojis potentiels
-  const cleanCurrent = current?.replace(/[🟢🟣🔴⚪]/gu, '').trim() || '';
-  const currentMs = parseFloat(cleanCurrent) * 1000 || 0;
+  // Use robust parsing for mm:ss.ms
+  const currentMs = parseTime(current) * 1000;
+
+  // If current is 0, we can't compare
   const diff = currentMs > 0 && best > 0 ? (currentMs - best) / 1000 : null;
 
-  // Déterminer la couleur du diff :
-  // - Violet (purple) : meilleur temps absolu de la course (overall best)
-  // - Vert : amélioration de notre meilleur temps personnel
-  // - Rouge : plus lent que notre meilleur
+  // Colors
   const isOverallBest = overallBest && currentMs > 0 && currentMs <= overallBest;
+  // Personal best if we are faster (negative diff)
   const isPersonalBest = diff !== null && diff < -0.01;
   const isSlower = diff !== null && diff > 0.01;
 
-  let diffColor = 'text-yellow-400'; // neutre
+  let diffColor = 'text-yellow-400';
   if (isOverallBest) {
     diffColor = 'text-purple-400';
   } else if (isPersonalBest) {
@@ -59,11 +58,13 @@ function SectorDisplay({
     diffColor = 'text-red-400';
   }
 
+  const displayValue = current?.replace(/[🟢🟣🔴⚪]/gu, '').trim() || '--';
+
   return (
     <div className="flex flex-col items-center">
       <span className="text-[10px] text-muted-foreground uppercase">{label}</span>
       <span className="text-2xl font-mono font-bold text-white leading-none">
-        {cleanCurrent || '--'}
+        {displayValue}
       </span>
       {diff !== null && (
         <span className={`text-sm font-mono font-bold ${diffColor}`}>

@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, TrendingDown, Minus, Gauge } from 'lucide-react';
+import { parseTime } from '@/utils/raceUtils';
 
 interface SectorAnalysisProps {
   currentS1: string;
@@ -37,7 +38,7 @@ export function SectorAnalysis({
         <div className="grid grid-cols-3 gap-3">
           {sectors.map((sector) => {
             const cleanValue = sector.current?.replace(/[🟣🟢]/gu, '').trim() || '';
-            const currentTime = parseFloat(cleanValue) || 0;
+            const currentTime = parseTime(sector.current);
             const isPurple = sector.current?.includes('🟣');
             const isGreen = sector.current?.includes('🟢');
             const diffToBest = sector.myBest > 0 && currentTime > 0 ? currentTime - sector.myBest : null;
@@ -45,16 +46,14 @@ export function SectorAnalysis({
             return (
               <div
                 key={sector.name}
-                className={`text-center p-3 rounded-lg border transition-colors ${
-                  isPurple ? 'border-purple-500 bg-purple-500/10' :
+                className={`text-center p-3 rounded-lg border transition-colors ${isPurple ? 'border-purple-500 bg-purple-500/10' :
                   isGreen ? 'border-green-500 bg-green-500/10' :
-                  'border-border bg-background/30'
-                }`}
+                    'border-border bg-background/30'
+                  }`}
               >
                 <div className="text-xs text-muted-foreground mb-1">{sector.name}</div>
-                <div className={`font-racing text-lg font-bold ${
-                  isPurple ? 'text-purple-400' : isGreen ? 'text-green-400' : ''
-                }`}>
+                <div className={`font-racing text-lg font-bold ${isPurple ? 'text-purple-400' : isGreen ? 'text-green-400' : ''
+                  }`}>
                   {cleanValue || '--'}
                 </div>
 
@@ -67,10 +66,9 @@ export function SectorAnalysis({
                     ) : (
                       <Minus className="w-3 h-3 text-yellow-400" />
                     )}
-                    <span className={`text-xs font-medium ${
-                      diffToBest < -0.05 ? 'text-green-400' :
+                    <span className={`text-xs font-medium ${diffToBest < -0.05 ? 'text-green-400' :
                       diffToBest > 0.1 ? 'text-red-400' : 'text-yellow-400'
-                    }`}>
+                      }`}>
                       {diffToBest > 0 ? '+' : ''}{diffToBest.toFixed(2)}s
                     </span>
                   </div>
