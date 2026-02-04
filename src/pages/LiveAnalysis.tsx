@@ -359,7 +359,6 @@ export default function LiveAnalysis() {
             <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
             <p className="text-muted-foreground">Connexion WebSocket à Apex Timing...</p>
             <p className="text-xs text-muted-foreground mt-2 mb-4">Circuit: {config?.circuitId}</p>
-
             <Button variant="outline" size="sm" onClick={() => setStep('setup')}>
               Annuler et retourner au menu
             </Button>
