@@ -199,20 +199,26 @@ export default function LiveAnalysis() {
     setRaceStartTime(sessionToResume.race_start_time);
     setSessionId(sessionToResume.id);
 
-    if (!isAutoResume) {
-      toast.loading('Reconnexion à Apex Timing...', { id: 'apex-connect' });
+    setSessionId(sessionToResume.id);
+
+    // Optimistic resume: Go to dashboard immediately
+    if (isAutoResume) {
+      console.log('Optimistic auto-resume: switching to dashboard');
+      setStep('dashboard');
+      return;
     }
+
+    // Manual resume: show loading, wait for result
+    toast.loading('Reconnexion à Apex Timing...', { id: 'apex-connect' });
 
     const data = await fetchApexData(sessionToResume.circuit_id, sessionToResume.id);
 
     if (data) {
       setLiveData(data);
-      if (!isAutoResume) toast.success('Session restaurée', { id: 'apex-connect' });
+      toast.success('Session restaurée', { id: 'apex-connect' });
       setStep('dashboard');
     } else {
       toast.error('Impossible de se reconnecter', { id: 'apex-connect' });
-      // If auto-resume failed, stay on resume screen or setup
-      if (isAutoResume) setStep('resume');
     }
   };
 
