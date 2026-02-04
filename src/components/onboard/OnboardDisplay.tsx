@@ -37,17 +37,19 @@ function SectorDisplay({
   best: number;
   overallBest?: number;
 }) {
-  // Use robust parsing for mm:ss.ms
+  // Nettoyer et parser
   const currentMs = parseTime(current) * 1000;
 
-  // If current is 0, we can't compare
-  const diff = currentMs > 0 && best > 0 ? (currentMs - best) / 1000 : null;
+  // Diff calculation
+  // best est en ms (ex: 23914)
+  const diffVal = (currentMs > 0 && best > 0) ? (currentMs - best) : null;
+  const diffSec = diffVal !== null ? diffVal / 1000 : null;
 
   // Colors
   const isOverallBest = overallBest && currentMs > 0 && currentMs <= overallBest;
-  // Personal best if we are faster (negative diff)
-  const isPersonalBest = diff !== null && diff < -0.01;
-  const isSlower = diff !== null && diff > 0.01;
+  // Personal best: significant improvement (> 10ms to avoid floating point noise)
+  const isPersonalBest = diffSec !== null && diffSec < -0.01;
+  const isSlower = diffSec !== null && diffSec > 0.01;
 
   let diffColor = 'text-yellow-400';
   if (isOverallBest) {
