@@ -2,7 +2,7 @@
 # Force Node.js instead of auto-detecting Deno from supabase folder
 
 [phases.setup]
-nixPkgs = ["nodejs_20", "npm"]
+nixPkgs = ["nodejs_20"]
 
 [phases.install]
 cmds = ["npm install"]
