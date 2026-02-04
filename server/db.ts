@@ -24,6 +24,18 @@ export async function initDatabase() {
             const schema = fs.readFileSync(schemaPath, 'utf8');
             await client.query(schema);
             console.log('Database schema applied');
+        } else {
+            console.error(`❌ Schema file not found at ${schemaPath}`);
+            // Verify if we are correctly resolving path
+            const altPath = path.join(process.cwd(), 'server', 'schema.sql');
+            if (fs.existsSync(altPath)) {
+                console.log(`Found schema at alternative path: ${altPath}`);
+                const schema = fs.readFileSync(altPath, 'utf8');
+                await client.query(schema);
+                console.log('Database schema applied from alternative path');
+            } else {
+                throw new Error('Schema file not found');
+            }
         }
     } finally {
         client.release();

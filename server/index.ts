@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import { pool, initDatabase } from './db.js';
 import apiRoutes from './routes/api.js';
 import apexRoutes from './routes/apex.js';
+import testRoutes from './routes/test.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,6 +20,7 @@ app.use(express.json());
 // API Routes
 app.use('/api', apiRoutes);
 app.use('/api/apex', apexRoutes);
+app.use('/api/test', testRoutes);
 
 // Serve static files from dist folder
 app.use(express.static(path.join(__dirname, '../dist')));
