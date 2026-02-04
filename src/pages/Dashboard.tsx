@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Flag, Timer, BarChart3, Users, Trophy, Zap, Target, ChevronRight, Upload, Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatCard } from '@/components/cards/StatCard';
-import { supabase } from '@/integrations/supabase/client';
+import { races } from '@/lib/api';
 import { lapData, drivers, raceInfo, currentStatus } from '@/data/raceData';
 import { getAllDriverStats, getGlobalBest, getTheoreticalBest, getValidLaps } from '@/utils/calculations';
 import { msToTime } from '@/utils/timeFormat';
@@ -20,19 +20,21 @@ interface RaceStats {
 export default function Dashboard() {
   const [latestRace, setLatestRace] = useState<RaceStats | null>(null);
   const [hasRaces, setHasRaces] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchLatestRace = async () => {
       try {
-        const { data: races, error } = await supabase
-          .from('races')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(1);
+        const allRaces = await races.getAll();
 
-        if (!error && races && races.length > 0) {
-          const race = races[0];
+        if (allRaces && allRaces.length > 0) {
+          // Sort client-side since API returns all races
+          // In a real app with pagination we would sort on server
+          const sortedRaces = allRaces.sort((a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+
+          const race = sortedRaces[0];
           setLatestRace({
             bestLapMs: race.best_lap_ms || 0,
             bestLapNumber: race.best_lap_number || 0,

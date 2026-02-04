@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { apex } from '@/lib/api';
 import { MOCK_CONFIG, getMockTeamDetails } from '@/data/mockRaceData';
 
 interface LapData {
@@ -58,11 +58,8 @@ export function useTeamDetails(
 
     setLoading(true);
     try {
-      const { data, error: fnError } = await supabase.functions.invoke('apex-team-details', {
-        body: { circuitId, driverId },
-      });
-
-      if (fnError) throw fnError;
+      // Use API client
+      const data = await apex.getTeamDetails(circuitId, driverId);
       setDetails(data);
       setError(null);
     } catch (err) {
@@ -98,10 +95,13 @@ export function useMultipleTeamDetails(
     try {
       const results = await Promise.all(
         driverIds.map(async (driverId) => {
-          const { data } = await supabase.functions.invoke('apex-team-details', {
-            body: { circuitId, driverId },
-          });
-          return { driverId, data };
+          try {
+            const data = await apex.getTeamDetails(circuitId, driverId);
+            return { driverId, data };
+          } catch (e) {
+            console.error(`Error fetching for ${driverId}:`, e);
+            return { driverId, data: null };
+          }
         })
       );
 

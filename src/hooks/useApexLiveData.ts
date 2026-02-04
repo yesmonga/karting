@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { apex } from '@/lib/api';
 import { ApexLiveData } from '@/types/live';
 import { MOCK_CONFIG, getMockLiveData } from '@/data/mockRaceData';
 
@@ -20,14 +20,7 @@ export function useApexLiveData(circuitId: string, refreshInterval: number = 300
     if (!circuitId) return;
 
     try {
-      const { data: result, error: fetchError } = await supabase.functions.invoke('apex-live', {
-        body: { circuitId },
-      });
-
-      if (fetchError) {
-        throw fetchError;
-      }
-
+      const result = await apex.getLiveData(circuitId);
       setData(result as ApexLiveData);
       setError(null);
     } catch (err) {

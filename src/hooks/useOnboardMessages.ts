@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import { onboardMessages } from '@/lib/api';
 import { MOCK_CONFIG, subscribeMockMessages } from '@/data/mockRaceData';
 
 interface OnboardMessage {
@@ -24,64 +23,35 @@ export function useOnboardMessages(kartNumber: string, sessionId?: string) {
       const unsubscribe = subscribeMockMessages((message) => {
         setLatestMessage(message);
       });
-      
+
       return unsubscribe;
     }
 
-    // Charger les messages récents
-    const loadMessages = async () => {
-      let query = supabase
-        .from('onboard_messages')
-        .select('*')
-        .eq('kart_number', kartNumber)
-        .order('created_at', { ascending: false })
-        .limit(10);
+    // Polling for messages in real environment since we don't have WebSockets yet
+    const fetchMessages = async () => {
+      try {
+        const data = await onboardMessages.getBySession(sessionId || 'all');
+        if (data && data.length > 0) {
+          // Filter by kartNumber client-side if needed (API returns by session)
+          const kartMessages = data.filter(m => m.kart_number === kartNumber);
 
-      if (sessionId) {
-        query = query.eq('session_id', sessionId);
-      }
-
-      const { data } = await query;
-
-      if (data && data.length > 0) {
-        setMessages(data);
-        setLatestMessage({
-          text: data[0].text,
-          timestamp: new Date(data[0].created_at),
-        });
-      }
-    };
-
-    loadMessages();
-
-    // Écouter les nouveaux messages en temps réel
-    const channel: RealtimeChannel = supabase
-      .channel(`onboard-${kartNumber}-${sessionId || 'all'}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'onboard_messages',
-          filter: `kart_number=eq.${kartNumber}`,
-        },
-        (payload) => {
-          const newMessage = payload.new as OnboardMessage;
-          // Filtrer par session si spécifié
-          if (sessionId && newMessage.session_id !== sessionId) return;
-          
-          setMessages((prev) => [newMessage, ...prev]);
-          setLatestMessage({
-            text: newMessage.text,
-            timestamp: new Date(newMessage.created_at),
-          });
+          setMessages(kartMessages);
+          if (kartMessages.length > 0) {
+            setLatestMessage({
+              text: kartMessages[0].text,
+              timestamp: new Date(kartMessages[0].created_at),
+            });
+          }
         }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
+      } catch (error) {
+        console.error('Error fetching onboard messages:', error);
+      }
     };
+
+    fetchMessages();
+    const interval = setInterval(fetchMessages, 3000); // Poll every 3 seconds
+
+    return () => clearInterval(interval);
   }, [kartNumber, sessionId]);
 
   return { messages, latestMessage };

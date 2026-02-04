@@ -3,19 +3,16 @@ import { LiveSetup } from '@/components/live/LiveSetup';
 import { TeamSelector } from '@/components/live/TeamSelector';
 import { LiveDashboard } from '@/components/live/LiveDashboard';
 import { LiveRaceConfig, ApexLiveData, LiveStint, StrategySegment } from '@/types/live';
-import { supabase } from '@/integrations/supabase/client';
+import { liveSessions, apex } from '@/lib/api';
 import { toast } from 'sonner';
-import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { Json } from '@/integrations/supabase/types';
 import { Play, Trash2, Clock } from 'lucide-react';
 import { MOCK_CONFIG, getMockLiveData, getMockRaceConfig, OUR_DRIVERS } from '@/data/mockRaceData';
 
 type LiveStep = 'setup' | 'loading' | 'select-team' | 'dashboard' | 'resume';
 
-// Anonymous user ID for non-authenticated mode
-const ANONYMOUS_USER_ID = '00000000-0000-0000-0000-000000000000';
+const ANONYMOUS_USER_ID = 'anonymous';
 
 interface SavedSession {
   id: string;
@@ -29,7 +26,6 @@ interface SavedSession {
 }
 
 export default function LiveAnalysis() {
-  const { user } = useAuth();
   const [step, setStep] = useState<LiveStep>('loading');
   const [config, setConfig] = useState<LiveRaceConfig | null>(null);
   const [liveData, setLiveData] = useState<ApexLiveData | null>(null);
@@ -56,7 +52,6 @@ export default function LiveAnalysis() {
       setIsConnected(true);
       setLiveData(getMockLiveData());
 
-      // Initialiser les stints
       const initialStints: LiveStint[] = [];
       for (let i = 1; i <= mockConfig.pitStopsRequired + 1; i++) {
         initialStints.push({
@@ -76,35 +71,31 @@ export default function LiveAnalysis() {
     }
 
     const checkExistingSession = async () => {
-      const userId = user?.id || ANONYMOUS_USER_ID;
+      try {
+        const data = await liveSessions.getByUser(ANONYMOUS_USER_ID);
 
-      const { data, error } = await supabase
-        .from('live_sessions')
-        .select('*')
-        .eq('user_id', userId)
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (data && !error) {
-        setSavedSession({
-          id: data.id,
-          config: data.config as unknown as LiveRaceConfig,
-          selected_kart: data.selected_kart,
-          selected_team: data.selected_team,
-          stints: (data.stints as unknown as LiveStint[]) || [],
-          race_start_time: data.race_start_time,
-          circuit_id: data.circuit_id,
-          created_at: data.created_at,
-        });
-        setStep('resume');
-      } else {
+        if (data) {
+          setSavedSession({
+            id: data.id,
+            config: data.config as unknown as LiveRaceConfig,
+            selected_kart: data.selected_kart,
+            selected_team: data.selected_team,
+            stints: (data.stints as unknown as LiveStint[]) || [],
+            race_start_time: data.race_start_time || null,
+            circuit_id: data.circuit_id,
+            created_at: data.created_at,
+          });
+          setStep('resume');
+        } else {
+          setStep('setup');
+        }
+      } catch {
         setStep('setup');
       }
     };
 
     checkExistingSession();
-  }, [user]);
+  }, []);
 
   // Save session to database
   const saveSession = useCallback(async (
@@ -114,62 +105,45 @@ export default function LiveAnalysis() {
     stintsData: LiveStint[],
     startTime: number | null
   ) => {
-    const userId = user?.id || ANONYMOUS_USER_ID;
+    try {
+      const sessionData = {
+        id: sessionId || undefined,
+        user_id: ANONYMOUS_USER_ID,
+        config: configData,
+        selected_kart: kart,
+        selected_team: team,
+        stints: stintsData,
+        race_start_time: startTime,
+        circuit_id: configData.circuitId,
+      };
 
-    const sessionData = {
-      user_id: userId,
-      config: JSON.parse(JSON.stringify(configData)) as Json,
-      selected_kart: kart,
-      selected_team: team,
-      stints: JSON.parse(JSON.stringify(stintsData)) as Json,
-      race_start_time: startTime,
-      circuit_id: configData.circuitId,
-    };
-
-    if (sessionId) {
-      // Update existing session
-      await supabase
-        .from('live_sessions')
-        .update(sessionData)
-        .eq('id', sessionId);
-      return sessionId;
-    } else {
-      // Create new session
-      const { data, error } = await supabase
-        .from('live_sessions')
-        .insert(sessionData)
-        .select('id')
-        .single();
-
-      if (data && !error) {
-        setSessionId(data.id);
-        return data.id;
+      const result = await liveSessions.save(sessionData);
+      if (result && !sessionId) {
+        setSessionId(result.id);
       }
+      return result?.id || null;
+    } catch (error) {
+      console.error('Error saving session:', error);
+      return null;
     }
-    return null;
-  }, [user, sessionId]);
+  }, [sessionId]);
 
   // Update stints in database
   const updateSessionStints = useCallback(async (newStints: LiveStint[]) => {
     setStints(newStints);
 
     if (sessionId) {
-      await supabase
-        .from('live_sessions')
-        .update({ stints: JSON.parse(JSON.stringify(newStints)) as Json })
-        .eq('id', sessionId);
+      try {
+        await liveSessions.updateStints(sessionId, newStints);
+      } catch (error) {
+        console.error('Error updating stints:', error);
+      }
     }
   }, [sessionId]);
 
   // Delete session
   const deleteSession = async () => {
-    if (savedSession) {
-      await supabase
-        .from('live_sessions')
-        .delete()
-        .eq('id', savedSession.id);
-      setSavedSession(null);
-    }
+    setSavedSession(null);
     setStep('setup');
   };
 
@@ -197,20 +171,12 @@ export default function LiveAnalysis() {
     }
   };
 
-  // Fetch data from Apex Timing via WebSocket edge function
+  // Fetch data from Apex Timing via our API
   const fetchApexData = useCallback(async (circuitId: string): Promise<ApexLiveData | null> => {
     try {
       console.log(`Fetching apex-live for circuit: ${circuitId}`);
 
-      const { data, error } = await supabase.functions.invoke('apex-live', {
-        body: { circuitId }
-      });
-
-      if (error) {
-        console.error('Edge function error:', error);
-        setIsConnected(false);
-        return null;
-      }
+      const data = await apex.getLiveData(circuitId);
 
       console.log('Apex-live response:', data);
 

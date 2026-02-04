@@ -5,8 +5,8 @@ import { TeamSelector } from '@/components/import/TeamSelector';
 import { DriverManager, Driver } from '@/components/import/DriverManager';
 import { StintDragDrop, StintData } from '@/components/import/StintDragDrop';
 import { TeamData, ImportedLapData } from '@/types/race';
-import { extractPdfText, parseRanking, parsePitStopsWithStints, parseLapHistory, parseTimeToMs } from '@/utils/pdfParser';
-import { supabase } from '@/integrations/supabase/client';
+import { extractPdfText, parseRanking, parsePitStopsWithStints, parseLapHistory } from '@/utils/pdfParser';
+import { races, teams as teamsApi, drivers as driversApi } from '@/lib/api';
 import { Upload, ChevronRight, Check, ArrowLeft, Save, AlertCircle, FileText, Weight } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -72,23 +72,19 @@ export default function RaceImport() {
       const lapsData = new Map<number, ImportedLapData[]>();
       const pitStopsData = new Map<number, { lap: number; duration?: number; trackTimeMs?: number; lapsCount?: number; bestLapMs?: number; avgLapMs?: number }[]>();
 
-      // Process each PDF file
       for (const uploadedFile of uploadedFiles) {
         try {
           console.log(`Processing ${uploadedFile.file.name} (type: ${uploadedFile.type})`);
           const text = await extractPdfText(uploadedFile.file);
           console.log(`Extracted ${text.length} characters from ${uploadedFile.file.name}`);
-          console.log('Sample text:', text.substring(0, 500));
 
           if (uploadedFile.type === 'classement') {
             const { teams } = parseRanking(text);
-            console.log(`Found ${teams.length} teams in classement`);
             if (teams.length > 0) {
               allTeams = teams;
             }
           } else if (uploadedFile.type === 'arrets') {
             const stintsMap = parsePitStopsWithStints(text);
-            console.log(`Found stints for ${stintsMap.size} teams in arrets`);
             stintsMap.forEach((stints, kart) => {
               pitStopsData.set(kart, stints.map(s => ({
                 lap: s.endLap,
@@ -101,7 +97,6 @@ export default function RaceImport() {
             });
           } else if (uploadedFile.type === 'historique') {
             const lapsMap = parseLapHistory(text);
-            console.log(`Found laps for ${lapsMap.size} teams in historique`);
             lapsMap.forEach((laps, kart) => {
               lapsData.set(kart, laps);
             });
@@ -111,11 +106,7 @@ export default function RaceImport() {
         }
       }
 
-      // If no teams from ranking, try to create from pit stops or laps data
       if (allTeams.length === 0) {
-        console.log('No teams from ranking, trying to create from other data...');
-        
-        // Try pit stops data first
         if (pitStopsData.size > 0) {
           let pos = 1;
           pitStopsData.forEach((stints, kart) => {
@@ -131,10 +122,8 @@ export default function RaceImport() {
               pitStops: [],
             });
           });
-          console.log(`Created ${allTeams.length} teams from pit stops data`);
         }
-        
-        // Try laps data if still no teams
+
         if (allTeams.length === 0 && lapsData.size > 0) {
           let pos = 1;
           lapsData.forEach((laps, kart) => {
@@ -150,17 +139,15 @@ export default function RaceImport() {
               pitStops: [],
             });
           });
-          console.log(`Created ${allTeams.length} teams from laps data`);
         }
       }
 
       if (allTeams.length === 0) {
-        toast.error("Impossible d'extraire les équipes. Ouvrez la console (F12) pour voir les détails.");
+        toast.error("Impossible d'extraire les équipes.");
         setIsAnalyzing(false);
         return;
       }
 
-      // Merge lap and pit stop data into teams
       allTeams.forEach(team => {
         team.laps = lapsData.get(team.kartNumber) || [];
         team.pitStops = pitStopsData.get(team.kartNumber)?.map(p => p.lap) || [];
@@ -184,34 +171,22 @@ export default function RaceImport() {
 
   const handleTeamSelect = useCallback((team: TeamData) => {
     setSelectedTeam(team);
-
-    // Get lap data and pit stops for this team
     const teamLaps = parsedData?.lapsData.get(team.kartNumber) || [];
     const teamStintsData = parsedData?.pitStops.get(team.kartNumber) || [];
 
-    console.log(`Team ${team.kartNumber} - ${team.teamName}: ${teamStintsData.length} stints from PDF`);
-    console.log(`  Lap history: ${teamLaps.length} laps`);
-
-    // Function to calculate REAL stats from lap history (not from PDF stint data)
-    // This fixes the bug where lap 1 (standing start) was counted as "best lap"
     const calculateRealStats = (startLap: number, endLap: number): { best: number; avg: number } => {
-      // Filter valid laps for this stint:
-      // - Must be within stint range
-      // - Exclude times > 90s (pit stops or anomalies)
-      // - Exclude times < 60s (impossible for this circuit)
-      const validLaps = teamLaps.filter(l => 
-        l.lap >= startLap && 
-        l.lap <= endLap && 
-        l.total > 60000 && // > 60s minimum realistic
-        l.total < 90000 // < 90s (not a pit)
+      const validLaps = teamLaps.filter(l =>
+        l.lap >= startLap &&
+        l.lap <= endLap &&
+        l.total > 60000 &&
+        l.total < 90000
       );
 
       if (validLaps.length === 0) {
-        // Fallback: include all laps with wider filter
-        const fallback = teamLaps.filter(l => 
-          l.lap >= startLap && 
-          l.lap <= endLap && 
-          l.total > 50000 && 
+        const fallback = teamLaps.filter(l =>
+          l.lap >= startLap &&
+          l.lap <= endLap &&
+          l.total > 50000 &&
           l.total < 180000
         );
         const times = fallback.map(l => l.total);
@@ -231,38 +206,21 @@ export default function RaceImport() {
     const generatedStints: StintData[] = [];
 
     if (teamStintsData.length > 0) {
-      // IMPORTANT: Sort stints by endLap to ensure correct order
       const sortedStints = [...teamStintsData].sort((a, b) => a.lap - b.lap);
-      
       let currentStart = 1;
-      
-      // Use sequential numbering (index + 1), NOT the stint number from PDF
+
       sortedStints.forEach((stintData, index) => {
         const endLap = stintData.lap;
         const lapsCount = endLap - currentStart + 1;
-        
-        // Skip invalid stints
-        if (endLap < currentStart || lapsCount <= 0) {
-          console.warn(`  Skipping invalid stint: endLap=${endLap}, currentStart=${currentStart}`);
-          return;
-        }
 
-        // Calculate REAL stats from lap history
+        if (endLap < currentStart || lapsCount <= 0) return;
+
         const realStats = calculateRealStats(currentStart, endLap);
-        
-        // Use real stats if available, otherwise fall back to PDF data
         const bestLapMs = realStats.best > 0 ? realStats.best : (stintData.bestLapMs || 0);
         const avgLapMs = realStats.avg > 0 ? realStats.avg : (stintData.avgLapMs || 0);
 
-        // Format for logging
-        const bestFormatted = bestLapMs > 0 
-          ? `${Math.floor(bestLapMs / 60000)}:${((bestLapMs % 60000) / 1000).toFixed(3).padStart(6, '0')}`
-          : 'N/A';
-
-        console.log(`  S${index + 1}: T${currentStart}→${endLap} (${lapsCount} tours) best=${bestFormatted}`);
-        
         generatedStints.push({
-          stintNumber: index + 1,  // SEQUENTIAL numbering
+          stintNumber: index + 1,
           startLap: currentStart,
           endLap: endLap,
           lapCount: lapsCount,
@@ -271,11 +229,10 @@ export default function RaceImport() {
           trackTimeMs: stintData.trackTimeMs,
           assignedDriverId: null,
         });
-        
+
         currentStart = endLap + 1;
       });
     } else {
-      // Fallback: single stint covering all laps
       const totalLaps = team.totalLaps || teamLaps.length || 207;
       const stats = calculateRealStats(1, totalLaps);
 
@@ -290,14 +247,6 @@ export default function RaceImport() {
       });
     }
 
-    console.log(`\n=== RÉSULTAT: ${generatedStints.length} stints ===`);
-    generatedStints.forEach(s => {
-      const bestFormatted = s.bestLapMs > 0 
-        ? `${Math.floor(s.bestLapMs / 60000)}:${((s.bestLapMs % 60000) / 1000).toFixed(3).padStart(6, '0')}`
-        : 'N/A';
-      console.log(`  S${s.stintNumber}: T${s.startLap}→${s.endLap} (${s.lapCount} tours) - Best: ${bestFormatted}`);
-    });
-
     setStints(generatedStints.length > 0 ? generatedStints : [{
       stintNumber: 1,
       startLap: 1,
@@ -308,7 +257,6 @@ export default function RaceImport() {
       assignedDriverId: null,
     }]);
 
-    // Load default drivers
     setDrivers([
       { id: crypto.randomUUID(), name: 'ALEX', code: 'A', color: '#F59E0B', weight_kg: 67 },
       { id: crypto.randomUUID(), name: 'EVAN', code: 'B', color: '#EF4444', weight_kg: null },
@@ -327,8 +275,8 @@ export default function RaceImport() {
     setStep('assign');
   };
 
-  const allStintsAssigned = useMemo(() => 
-    stints.every(s => s.assignedDriverId), 
+  const allStintsAssigned = useMemo(() =>
+    stints.every(s => s.assignedDriverId),
     [stints]
   );
 
@@ -340,120 +288,73 @@ export default function RaceImport() {
 
     try {
       // 1. Create or get team
-      const { data: existingTeam } = await supabase
-        .from('teams')
-        .select('id')
-        .eq('name', selectedTeam.teamName)
-        .maybeSingle();
-
+      const allTeams = await teamsApi.getAll();
+      let existingTeam = allTeams.find(t => t.name === selectedTeam.teamName);
       let teamId = existingTeam?.id;
 
       if (!teamId) {
-        const { data: newTeam, error: teamError } = await supabase
-          .from('teams')
-          .insert({ name: selectedTeam.teamName })
-          .select('id')
-          .single();
-
-        if (teamError) throw teamError;
+        const newTeam = await teamsApi.create(selectedTeam.teamName);
         teamId = newTeam.id;
       }
 
       // 2. Save drivers
       const driverIds: Record<string, string> = {};
+      const existingDrivers = await driversApi.getAll();
+
       for (const driver of drivers) {
-        const { data: existingDriver } = await supabase
-          .from('drivers')
-          .select('id')
-          .eq('team_id', teamId)
-          .eq('name', driver.name)
-          .maybeSingle();
+        const existing = existingDrivers.find(d => d.team_id === teamId && d.name === driver.name);
 
-        if (existingDriver) {
-          driverIds[driver.id] = existingDriver.id;
-          // Update weight if changed
-          await supabase
-            .from('drivers')
-            .update({ weight_kg: driver.weight_kg, color: driver.color })
-            .eq('id', existingDriver.id);
+        if (existing) {
+          driverIds[driver.id] = existing.id;
+          await driversApi.update(existing.id, { weight_kg: driver.weight_kg || undefined, color: driver.color });
         } else {
-          const { data: newDriver, error: driverError } = await supabase
-            .from('drivers')
-            .insert({
-              team_id: teamId,
-              name: driver.name,
-              code: driver.code,
-              color: driver.color,
-              weight_kg: driver.weight_kg,
-            })
-            .select('id')
-            .single();
-
-          if (driverError) throw driverError;
+          const newDriver = await driversApi.create({
+            team_id: teamId,
+            name: driver.name,
+            code: driver.code,
+            color: driver.color,
+            weight_kg: driver.weight_kg || undefined,
+          });
           driverIds[driver.id] = newDriver.id;
         }
       }
 
-      // 3. Create race
+      // 3. Create race with all data
       const laps = parsedData?.lapsData.get(selectedTeam.kartNumber) || [];
       const validLaps = laps.filter(l => l.total > 0 && l.total < 120000);
       const bestLap = validLaps.length > 0 ? Math.min(...validLaps.map(l => l.total)) : selectedTeam.bestLap;
       const bestLapNumber = validLaps.find(l => l.total === bestLap)?.lap || 0;
 
-      const { data: race, error: raceError } = await supabase
-        .from('races')
-        .insert({
-          team_id: teamId,
-          name: raceName,
-          ballast_target_kg: ballastTarget,
-          kart_number: selectedTeam.kartNumber,
-          position: selectedTeam.position,
-          total_karts: parsedData?.teams.length || 47,
-          best_lap_ms: Math.round(bestLap),
-          best_lap_number: bestLapNumber,
-          total_laps: selectedTeam.totalLaps || laps.length,
-        })
-        .select('id')
-        .single();
+      const pitStops = parsedData?.pitStops.get(selectedTeam.kartNumber) || [];
 
-      if (raceError) throw raceError;
-
-      // 4. Save laps
-      if (laps.length > 0) {
-        const lapInserts = laps.map(l => ({
-          race_id: race.id,
+      await races.create({
+        team_id: teamId,
+        name: raceName,
+        ballast_target_kg: ballastTarget,
+        kart_number: selectedTeam.kartNumber,
+        position: selectedTeam.position,
+        total_karts: parsedData?.teams.length || 47,
+        best_lap_ms: Math.round(bestLap),
+        best_lap_number: bestLapNumber,
+        total_laps: selectedTeam.totalLaps || laps.length,
+        laps: laps.map(l => ({
           lap_number: l.lap,
           lap_time_ms: Math.round(l.total),
-        }));
-
-        await supabase.from('race_laps').insert(lapInserts);
-      }
-
-      // 5. Save pit stops
-      const pitStops = parsedData?.pitStops.get(selectedTeam.kartNumber) || [];
-      if (pitStops.length > 0) {
-        const pitInserts = pitStops.map(p => ({
-          race_id: race.id,
+        })),
+        pit_stops: pitStops.map(p => ({
           lap_number: p.lap,
           duration_ms: p.duration || null,
-        }));
-
-        await supabase.from('pit_stops').insert(pitInserts);
-      }
-
-      // 6. Save stints
-      const stintInserts = stints.map(s => ({
-        race_id: race.id,
-        driver_id: s.assignedDriverId ? driverIds[s.assignedDriverId] : null,
-        stint_number: s.stintNumber,
-        start_lap: s.startLap,
-        end_lap: s.endLap,
-        best_lap_ms: s.bestLapMs || null,
-        avg_lap_ms: s.avgLapMs || null,
-        total_laps: s.lapCount,
-      }));
-
-      await supabase.from('stints').insert(stintInserts);
+        })),
+        stints: stints.map(s => ({
+          driver_id: s.assignedDriverId ? driverIds[s.assignedDriverId] : null,
+          stint_number: s.stintNumber,
+          start_lap: s.startLap,
+          end_lap: s.endLap,
+          best_lap_ms: s.bestLapMs || null,
+          avg_lap_ms: s.avgLapMs || null,
+          total_laps: s.lapCount,
+        })),
+      });
 
       toast.success('Course enregistrée avec succès!');
       setStep('complete');
@@ -521,7 +422,6 @@ export default function RaceImport() {
         <div className="glass-card rounded-xl p-6">
           {step === 'config' && (
             <div className="space-y-6">
-              {/* Race Name - Required */}
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium mb-2">
                   <FileText className="w-4 h-4 text-primary" />
@@ -545,7 +445,6 @@ export default function RaceImport() {
                 )}
               </div>
 
-              {/* Ballast Target */}
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium mb-2">
                   <Weight className="w-4 h-4 text-primary" />
@@ -563,12 +462,10 @@ export default function RaceImport() {
                 </p>
               </div>
 
-              {/* File Upload */}
               <div className="pt-4 border-t border-border/30">
                 <FileUploader onFilesReady={handleFilesReady} />
               </div>
 
-              {/* Analyze Button */}
               <button
                 onClick={analyzeFiles}
                 disabled={!isRaceNameValid || uploadedFiles.length === 0 || isAnalyzing}

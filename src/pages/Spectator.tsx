@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { liveSessions, apex } from '@/lib/api';
 import { ApexLiveData, LiveRaceConfig, LiveStint, ApexDriverData } from '@/types/live';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -41,26 +41,27 @@ export default function Spectator() {
         return;
       }
 
-      const { data, error: fetchError } = await supabase
-        .from('live_sessions')
-        .select('config, selected_kart, selected_team, circuit_id, stints')
-        .eq('id', sessionId)
-        .single();
+      try {
+        const data = await liveSessions.getById(sessionId);
 
-      if (fetchError || !data) {
+        if (!data) {
+          setError('Session introuvable ou expirée');
+          setLoading(false);
+          return;
+        }
+
+        setSession({
+          config: data.config as unknown as LiveRaceConfig,
+          selected_kart: data.selected_kart,
+          selected_team: data.selected_team,
+          circuit_id: data.circuit_id,
+          stints: (data.stints as unknown as LiveStint[]) || [],
+        });
+        setLoading(false);
+      } catch {
         setError('Session introuvable ou expirée');
         setLoading(false);
-        return;
       }
-
-      setSession({
-        config: data.config as unknown as LiveRaceConfig,
-        selected_kart: data.selected_kart,
-        selected_team: data.selected_team,
-        circuit_id: data.circuit_id,
-        stints: (data.stints as unknown as LiveStint[]) || [],
-      });
-      setLoading(false);
     };
 
     fetchSession();
@@ -69,15 +70,7 @@ export default function Spectator() {
   // Fetch live data from Apex
   const fetchApexData = useCallback(async (circuitId: string): Promise<ApexLiveData | null> => {
     try {
-      const { data, error } = await supabase.functions.invoke('apex-live', {
-        body: { circuitId }
-      });
-
-      if (error) {
-        console.error('Edge function error:', error);
-        return null;
-      }
-
+      const data = await apex.getLiveData(circuitId);
       return data as ApexLiveData;
     } catch (err) {
       console.error('Fetch error:', err);

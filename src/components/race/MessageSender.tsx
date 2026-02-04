@@ -3,7 +3,7 @@ import { Send, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { supabase } from '@/integrations/supabase/client';
+import { onboardMessages } from '@/lib/api';
 import { toast } from 'sonner';
 import { MOCK_CONFIG, sendMockMessage } from '@/data/mockRaceData';
 
@@ -21,6 +21,8 @@ const QUICK_MESSAGES = [
   'DEFEND',
   '+1 TOUR',
   'COOL DOWN',
+  'PIT NOW',
+  'IGNORE BLUE',
 ];
 
 export function MessageSender({ kartNumber, sessionId }: MessageSenderProps) {
@@ -41,13 +43,11 @@ export function MessageSender({ kartNumber, sessionId }: MessageSenderProps) {
         return;
       }
 
-      const { error } = await supabase.from('onboard_messages').insert({
+      await onboardMessages.create({
         kart_number: kartNumber,
         text: text.trim().toUpperCase(),
-        session_id: sessionId || null,
+        session_id: sessionId,
       });
-
-      if (error) throw error;
 
       toast.success(`Message envoyé au Kart #${kartNumber}`);
       setCustomMessage('');
