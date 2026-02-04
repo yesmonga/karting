@@ -107,7 +107,21 @@ export default function LiveAnalysis() {
             window.history.replaceState({}, '', newUrl);
           }
 
-          setStep('resume');
+          if (urlSessionId) {
+            console.log('Auto-resuming session from URL...');
+            resumeSession({
+              id: data.id,
+              config: data.config as unknown as LiveRaceConfig,
+              selected_kart: data.selected_kart,
+              selected_team: data.selected_team,
+              stints: (data.stints as unknown as LiveStint[]) || [],
+              race_start_time: data.race_start_time || null,
+              circuit_id: data.circuit_id,
+              created_at: data.created_at,
+            }, true);
+          } else {
+            setStep('resume');
+          }
         } else {
           setStep('setup');
         }
@@ -117,7 +131,7 @@ export default function LiveAnalysis() {
     };
 
     checkExistingSession();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Save session to database
   const saveSession = useCallback(async (
@@ -175,35 +189,39 @@ export default function LiveAnalysis() {
   };
 
   // Resume session
-  const resumeSession = async () => {
-    if (!savedSession) return;
+  const resumeSession = async (sessionToResume = savedSession, isAutoResume = false) => {
+    if (!sessionToResume) return;
 
-    setConfig(savedSession.config);
-    setSelectedKart(savedSession.selected_kart);
-    setSelectedTeam(savedSession.selected_team);
-    setStints(savedSession.stints);
-    setRaceStartTime(savedSession.race_start_time);
-    setSessionId(savedSession.id);
+    setConfig(sessionToResume.config);
+    setSelectedKart(sessionToResume.selected_kart);
+    setSelectedTeam(sessionToResume.selected_team);
+    setStints(sessionToResume.stints);
+    setRaceStartTime(sessionToResume.race_start_time);
+    setSessionId(sessionToResume.id);
 
-    toast.loading('Reconnexion à Apex Timing...', { id: 'apex-connect' });
+    if (!isAutoResume) {
+      toast.loading('Reconnexion à Apex Timing...', { id: 'apex-connect' });
+    }
 
-    const data = await fetchApexData(savedSession.circuit_id);
+    const data = await fetchApexData(sessionToResume.circuit_id, sessionToResume.id);
 
     if (data) {
       setLiveData(data);
-      toast.success('Session restaurée', { id: 'apex-connect' });
+      if (!isAutoResume) toast.success('Session restaurée', { id: 'apex-connect' });
       setStep('dashboard');
     } else {
       toast.error('Impossible de se reconnecter', { id: 'apex-connect' });
+      // If auto-resume failed, stay on resume screen or setup
+      if (isAutoResume) setStep('resume');
     }
   };
 
   // Fetch data from Apex Timing via our API
-  const fetchApexData = useCallback(async (circuitId: string): Promise<ApexLiveData | null> => {
+  const fetchApexData = useCallback(async (circuitId: string, sessId?: string): Promise<ApexLiveData | null> => {
     try {
       console.log(`Fetching apex-live for circuit: ${circuitId}`);
 
-      const data = await apex.getLiveData(circuitId);
+      const data = await apex.getLiveData(circuitId, sessId);
 
       console.log('Apex-live response:', data);
 
@@ -241,7 +259,7 @@ export default function LiveAnalysis() {
     setStep('loading');
     toast.loading('Connexion WebSocket à Apex Timing...', { id: 'apex-connect' });
 
-    const data = await fetchApexData(newConfig.circuitId);
+    const data = await fetchApexData(newConfig.circuitId, sessionId || undefined);
 
     if (data && data.drivers && data.drivers.length > 0) {
       setLiveData(data);
@@ -361,7 +379,7 @@ export default function LiveAnalysis() {
               </div>
 
               <div className="flex gap-2">
-                <Button onClick={resumeSession} className="flex-1">
+                <Button onClick={() => resumeSession()} className="flex-1">
                   <Play className="h-4 w-4 mr-2" />
                   Reprendre
                 </Button>

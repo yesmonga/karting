@@ -139,8 +139,8 @@ function parseGridHtml(html: string): Driver[] {
 // POST /api/apex/live
 router.post('/live', async (req, res) => {
     try {
-        const { circuitId } = req.body;
-        console.log(`Apex Live request for circuit: ${circuitId}`);
+        const { circuitId, sessionId } = req.body;
+        console.log(`Apex Live request for circuit: ${circuitId}, session: ${sessionId || 'none'}`);
 
         const circuits: Record<string, { host: string; wsPort: number; name: string }> = {
             'rkc': { host: 'www.apex-timing.com', wsPort: 7913, name: 'Racing Kart Cormeilles' },

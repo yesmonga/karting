@@ -230,8 +230,8 @@ export interface ApexTeamDetails {
 }
 
 export const apex = {
-    getLiveData: (circuitId: string) =>
-        apiFetch<ApexLiveData>('/apex/live', { method: 'POST', body: JSON.stringify({ circuitId }) }),
+    getLiveData: (circuitId: string, sessionId?: string) =>
+        apiFetch<ApexLiveData>('/apex/live', { method: 'POST', body: JSON.stringify({ circuitId, sessionId }) }),
     getTeamDetails: (circuitId: string, driverId: string) =>
         apiFetch<ApexTeamDetails>('/apex/team-details', { method: 'POST', body: JSON.stringify({ circuitId, driverId }) }),
 };
