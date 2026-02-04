@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, MessageSquare, Gauge, Settings } from 'lucide-react';
 import { ApexDriverData } from '@/types/live';
 import { TeamDetails } from '@/hooks/useTeamDetails';
+import { calculateRealSectors } from '@/utils/raceUtils';
 
 interface OnboardDisplayProps {
   myDriver: ApexDriverData | null | undefined;
@@ -129,34 +130,12 @@ export function OnboardDisplay({
   const bestS2 = myDetails?.bestSectors?.s2 || 0;
   const bestS3 = myDetails?.bestSectors?.s3 || 0;
 
-  // --- START FIX: S2/S3 Calculation ---
-  // Helper to parse "23.456" or "1:03.456" into seconds
-  const parseSeconds = (str: string | undefined) => {
-    if (!str) return 0;
-    const clean = str.replace(/[^\d:.]/g, ''); // Remove emojis etc
-    if (clean.includes(':')) {
-      const parts = clean.split(':');
-      return (parseInt(parts[0]) * 60) + parseFloat(parts[1]);
-    }
-    return parseFloat(clean) || 0;
-  };
-
-  const s1Sec = parseSeconds(myDriver.s1);
-  const s2Sec = parseSeconds(myDriver.s2);
-  const s3Sec = parseSeconds(myDriver.s3);
-
-  // Heuristic: If S2 is significantly larger than S1 (> +20s), it's likely cumulative
-  let realS2Str = myDriver.s2;
-  if (s1Sec > 0 && s2Sec > s1Sec + 20) {
-    realS2Str = (s2Sec - s1Sec).toFixed(3);
-  }
-
-  // Heuristic: If S3 is significantly larger than S2 (> +20s), it's likely cumulative
-  let realS3Str = myDriver.s3;
-  if (s2Sec > 0 && s3Sec > s2Sec + 20) {
-    realS3Str = (s3Sec - s2Sec).toFixed(3);
-  }
-  // --- END FIX ---
+  // Use shared utility to calculate real sector times (handling cumulative splits)
+  const { s1: s1Str, s2: realS2Str, s3: realS3Str } = calculateRealSectors(
+    myDriver.s1,
+    myDriver.s2,
+    myDriver.s3
+  );
 
   return (
     <div className="fixed inset-0 bg-black text-white overflow-hidden">

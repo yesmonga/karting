@@ -1,9 +1,11 @@
 import { useState, useMemo } from 'react';
 import { ApexLiveData, ApexDriverData, LiveRaceConfig, LiveStint, StrategySegment } from '@/types/live';
+import { ActionHistory } from '@/hooks/useActionHistory';
+import { calculateRealSectors } from '@/utils/raceUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Trophy, Timer, Gauge, Flag, Users, AlertTriangle, 
+import {
+  Trophy, Timer, Gauge, Flag, Users, AlertTriangle,
   Clock, Car, Scale
 } from 'lucide-react';
 import { calculateBallast, formatBallast } from '@/utils/ballastCalculator';
@@ -56,7 +58,7 @@ export function LiveDashboard({
   onStrategyUpdate,
 }: LiveDashboardProps) {
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
-  
+
   // Layout customization
   const layoutCustomizer = useLayoutCustomizer();
 
@@ -73,26 +75,26 @@ export function LiveDashboard({
   // Driver ahead/behind for gap chart and comparison
   const myIndex = liveData?.drivers.findIndex(d => d.kart === selectedKart) ?? -1;
   const driverAhead = myIndex > 0 ? liveData?.drivers[myIndex - 1] : null;
-  const driverBehind = myIndex >= 0 && myIndex < (liveData?.drivers.length || 0) - 1 
-    ? liveData?.drivers[myIndex + 1] 
+  const driverBehind = myIndex >= 0 && myIndex < (liveData?.drivers.length || 0) - 1
+    ? liveData?.drivers[myIndex + 1]
     : null;
 
   // Fetch detailed team data from API
   const { details: myDetails, loading: myLoading } = useTeamDetails(
-    circuitId, 
-    myTeam?.driverId || null, 
+    circuitId,
+    myTeam?.driverId || null,
     5000
   );
-  
+
   const { details: aheadDetails } = useTeamDetails(
-    circuitId, 
-    driverAhead?.driverId || null, 
+    circuitId,
+    driverAhead?.driverId || null,
     5000
   );
-  
+
   const { details: behindDetails } = useTeamDetails(
-    circuitId, 
-    driverBehind?.driverId || null, 
+    circuitId,
+    driverBehind?.driverId || null,
     5000
   );
 
@@ -128,8 +130,8 @@ export function LiveDashboard({
 
   const assignDriverToStint = (stintId: string, driverId: string) => {
     const driver = config.drivers.find(d => d.id === driverId);
-    const updated = stints.map(s => 
-      s.id === stintId 
+    const updated = stints.map(s =>
+      s.id === stintId
         ? { ...s, driverId, driverName: driver?.name || null }
         : s
     );
@@ -160,10 +162,10 @@ export function LiveDashboard({
                 onOpenChange={layoutCustomizer.setIsCustomizing}
               />
               {sessionId && (
-                <QRCodeShare 
-                  sessionId={sessionId} 
-                  teamName={selectedTeam} 
-                  kartNumber={selectedKart} 
+                <QRCodeShare
+                  sessionId={sessionId}
+                  teamName={selectedTeam}
+                  kartNumber={selectedKart}
                 />
               )}
               <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
@@ -172,16 +174,15 @@ export function LiveDashboard({
                 <div className="text-sm text-muted-foreground">{liveData?.circuit || 'Connexion...'}</div>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-6 text-sm">
               <div className="text-center">
                 <div className="text-muted-foreground flex items-center gap-1 justify-center">
                   <Clock className="w-3 h-3" />
                   Restant
                 </div>
-                <div className={`font-racing font-bold text-lg ${
-                  raceTimer.remaining < 600 ? 'text-destructive animate-pulse' : 'text-primary'
-                }`}>
+                <div className={`font-racing font-bold text-lg ${raceTimer.remaining < 600 ? 'text-destructive animate-pulse' : 'text-primary'
+                  }`}>
                   {raceTimer.formattedRemaining}
                 </div>
               </div>
@@ -190,7 +191,7 @@ export function LiveDashboard({
 
           {/* Progress bar */}
           <div className="mt-3 h-2 bg-background/50 rounded-full overflow-hidden">
-            <div 
+            <div
               className="h-full bg-gradient-to-r from-primary to-primary/60 transition-all duration-1000"
               style={{ width: `${raceTimer.percent}%` }}
             />
@@ -262,12 +263,17 @@ export function LiveDashboard({
                 case 'ai-advisor':
                   return <AIAdvisorPanel key={sectionId} advices={aiAdvices} />;
                 case 'sector-analysis':
+                  const { s1, s2, s3 } = calculateRealSectors(
+                    myTeam?.s1 || '',
+                    myTeam?.s2 || '',
+                    myTeam?.s3 || ''
+                  );
                   return (
                     <SectorAnalysis
                       key={sectionId}
-                      currentS1={myTeam?.s1 || ''}
-                      currentS2={myTeam?.s2 || ''}
-                      currentS3={myTeam?.s3 || ''}
+                      currentS1={s1}
+                      currentS2={s2}
+                      currentS3={s3}
                       bestS1={myDetails?.bestSectors.s1 || bestSectors?.s1 || 0}
                       bestS2={myDetails?.bestSectors.s2 || bestSectors?.s2 || 0}
                       bestS3={myDetails?.bestSectors.s3 || bestSectors?.s3 || 0}
@@ -324,7 +330,7 @@ export function LiveDashboard({
                               {liveData?.drivers.slice(0, 20).map((driver) => {
                                 const isMe = driver.kart === selectedKart;
                                 return (
-                                  <tr 
+                                  <tr
                                     key={driver.kart}
                                     className={`border-b border-border/30 ${isMe ? 'bg-primary/10' : ''}`}
                                   >
@@ -369,7 +375,7 @@ export function LiveDashboard({
               <CardContent>
                 {activeDriver ? (
                   <div className="flex items-center gap-4 p-4 rounded-lg bg-background/30 border-2 border-primary/50">
-                    <div 
+                    <div
                       className="w-4 h-12 rounded-full"
                       style={{ backgroundColor: activeDriver.color }}
                     />
@@ -404,7 +410,7 @@ export function LiveDashboard({
                   {config.drivers.map((driver) => {
                     const ballast = calculateBallast(driver.weightKg, config.ballastTarget);
                     const isActive = activeDriver?.id === driver.id;
-                    
+
                     return (
                       <button
                         key={driver.id}
@@ -413,13 +419,12 @@ export function LiveDashboard({
                             assignDriverToStint(activeStint.id, driver.id);
                           }
                         }}
-                        className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all text-left ${
-                          isActive 
-                            ? 'bg-primary/20 border-2 border-primary' 
-                            : 'bg-background/30 border border-border/50 hover:border-primary/30'
-                        }`}
+                        className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all text-left ${isActive
+                          ? 'bg-primary/20 border-2 border-primary'
+                          : 'bg-background/30 border border-border/50 hover:border-primary/30'
+                          }`}
                       >
-                        <div 
+                        <div
                           className="w-3 h-8 rounded-full shrink-0"
                           style={{ backgroundColor: driver.color }}
                         />
@@ -449,23 +454,22 @@ export function LiveDashboard({
                 <div className="space-y-2">
                   {stints.map((stint) => {
                     const driver = stint.driverId ? config.drivers.find(d => d.id === stint.driverId) : null;
-                    
+
                     return (
                       <button
                         key={stint.id}
                         onClick={() => setActiveStint(stint.id)}
-                        className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all text-left ${
-                          stint.isActive 
-                            ? 'bg-primary/20 border-2 border-primary' 
-                            : 'bg-background/30 border border-border/50 hover:border-primary/30'
-                        }`}
+                        className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all text-left ${stint.isActive
+                          ? 'bg-primary/20 border-2 border-primary'
+                          : 'bg-background/30 border border-border/50 hover:border-primary/30'
+                          }`}
                       >
                         <div className="font-racing font-bold text-lg w-8">
                           {stint.stintNumber}
                         </div>
                         {driver ? (
                           <>
-                            <div 
+                            <div
                               className="w-2 h-6 rounded-full shrink-0"
                               style={{ backgroundColor: driver.color }}
                             />
@@ -485,8 +489,8 @@ export function LiveDashboard({
             </Card>
 
             {/* Comments - Using new CommentsPanel */}
-            <CommentsPanel 
-              comments={liveData?.comments || []} 
+            <CommentsPanel
+              comments={liveData?.comments || []}
               maxHeight={300}
             />
           </div>
