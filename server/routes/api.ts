@@ -295,4 +295,18 @@ router.get('/onboard-messages/:sessionId', async (req, res) => {
     }
 });
 
+// Get latest message for kart (fallback)
+router.get('/onboard-messages/kart/:kartNumber/latest', async (req, res) => {
+    try {
+        const { kartNumber } = req.params;
+        const messages = await query(
+            'SELECT * FROM onboard_messages WHERE kart_number = $1 ORDER BY created_at DESC LIMIT 1',
+            [kartNumber]
+        );
+        res.json(messages); // Returns array with 0 or 1 item
+    } catch (error) {
+        res.status(500).json({ error: String(error) });
+    }
+});
+
 export default router;

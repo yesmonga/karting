@@ -155,8 +155,12 @@ export interface OnboardMessage {
 export const onboardMessages = {
     create: (data: { session_id?: string; kart_number: string; text: string }) =>
         apiFetch<OnboardMessage>('/onboard-messages', { method: 'POST', body: JSON.stringify(data) }),
-    getBySession: (sessionId: string) =>
-        apiFetch<OnboardMessage[]>(`/onboard-messages/${sessionId}`),
+    getBySession: async (sessionId: string) => {
+        return apiFetch<OnboardMessage[]>(`/onboard-messages/${sessionId}`);
+    },
+    getLatestByKart: async (kartNumber: string) => {
+        return apiFetch<OnboardMessage[]>(`/onboard-messages/kart/${kartNumber}/latest`);
+    },
 };
 
 // ============== APEX TIMING ==============

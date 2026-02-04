@@ -23,22 +23,28 @@ export function useOnboardMessages(kartNumber: string, sessionId?: string) {
     const fetchMessages = async () => {
       try {
         if (!sessionId) {
-          console.warn('Skipping message poll: No sessionId provided');
-          return;
-        }
-
-        console.log(`Polling messages for session: ${sessionId}`);
-        const data = await onboardMessages.getBySession(sessionId);
-        if (data && data.length > 0) {
-          // Filter by kartNumber client-side if needed (API returns by session)
-          const kartMessages = data.filter(m => m.kart_number === kartNumber);
-
-          setMessages(kartMessages);
-          if (kartMessages.length > 0) {
+          // Fallback: Fetch latest message for this kart regardless of session
+          // This allows /onboard/25 to work without ?session=...
+          const data = await onboardMessages.getLatestByKart(kartNumber);
+          if (data && data.length > 0) {
             setLatestMessage({
-              text: kartMessages[0].text,
-              timestamp: new Date(kartMessages[0].created_at),
+              text: data[0].text,
+              timestamp: new Date(data[0].created_at),
             });
+          }
+        } else {
+          // Standard: Fetch by session
+          console.log(`Polling messages for session: ${sessionId}`);
+          const data = await onboardMessages.getBySession(sessionId);
+          if (data && data.length > 0) {
+            const kartMessages = data.filter(m => m.kart_number === kartNumber);
+            setMessages(kartMessages);
+            if (kartMessages.length > 0) {
+              setLatestMessage({
+                text: kartMessages[0].text,
+                timestamp: new Date(kartMessages[0].created_at),
+              });
+            }
           }
         }
       } catch (error) {
