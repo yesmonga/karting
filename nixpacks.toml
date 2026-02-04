@@ -1,0 +1,14 @@
+# Nixpacks configuration for Railway
+# Force Node.js instead of auto-detecting Deno from supabase folder
+
+[phases.setup]
+nixPkgs = ["nodejs_20", "npm"]
+
+[phases.install]
+cmds = ["npm install"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "npm run preview -- --host 0.0.0.0 --port ${PORT:-3000}"
