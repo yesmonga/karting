@@ -168,89 +168,119 @@ export function OnboardDisplay({
         <Settings className="w-3 h-3 text-primary" />
       </button>
 
+      {/* Layout principal en grille - utilise tout l'écran */}
+      <div className="grid grid-cols-12 grid-rows-2 gap-0.5 h-full w-full p-0.5">
+        {/* === LIGNE 1 : Position, Secteurs, Temps, Message === */}
 
-      {/* Pit Timer / Info */}
-      <div className={`h-1/3 rounded-xl border flex items-center justify-center gap-2 ${isPitting ? 'bg-orange-500/20 border-orange-500' : 'bg-card/20 border-white/10'
-        }`}>
-        <Gauge className={`w-5 h-5 ${isPitting ? 'text-orange-500' : 'text-muted-foreground'}`} />
-        {isPitting ? (
-          <span className="text-3xl font-mono font-bold text-orange-500">{pitTimer}s</span>
-        ) : (
-          <div className="text-center">
-            <span className="text-xs text-muted-foreground block text-center">STINT</span>
-            <span className="font-bold">{myDriver.pits || 0} <span className="text-xs font-normal text-muted-foreground">stops</span></span>
+        {/* Position */}
+        <div className="col-span-1 row-span-1 flex flex-col items-center justify-center bg-primary/20 rounded">
+          <span className="text-5xl font-racing font-bold text-primary leading-none">
+            P{myDriver.position}
+          </span>
+          <span className="text-[10px] text-muted-foreground">#{myDriver.kart}</span>
+        </div>
+
+        {/* Secteurs */}
+        <div className="col-span-6 row-span-1 flex items-center justify-around bg-card/50 rounded">
+          <SectorDisplay label="S1" current={myDriver.s1} best={bestS1} />
+          <SectorDisplay label="S2" current={realS2Str} best={bestS2} />
+          <SectorDisplay label="S3" current={realS3Str} best={bestS3} />
+        </div>
+
+        {/* Dernier tour / Meilleur tour */}
+        <div className="col-span-4 row-span-1 flex flex-col items-center justify-center bg-card/50 rounded">
+          <span className="text-[9px] text-muted-foreground uppercase">DERNIER</span>
+          <span className="text-3xl font-mono font-bold text-white leading-none">{myDriver.lastLap || '--'}</span>
+          <span className="text-[10px] text-green-400">BEST: {myDriver.bestLap || '--'}</span>
+        </div>
+
+        {/* Message du PC */}
+        <div
+          className={`col-span-1 row-span-1 flex flex-col items-center justify-center rounded transition-all ${messageFlash ? 'bg-yellow-500/40 animate-pulse' : 'bg-card/50'
+            }`}
+        >
+          {latestMessage ? (
+            <div className="text-center px-1">
+              <MessageSquare className="w-4 h-4 text-yellow-400 mx-auto" />
+              <span className="text-[8px] font-racing font-bold text-yellow-400 animate-pulse leading-none break-all">
+                {latestMessage.text}
+              </span>
+            </div>
+          ) : (
+            <MessageSquare className="w-4 h-4 text-muted-foreground" />
+          )}
+        </div>
+
+        {/* === LIGNE 2 : Kart devant, Écarts, Pit Timer, Kart derrière, Tour === */}
+
+        {/* Kart devant */}
+        <div className="col-span-2 row-span-1 flex flex-col items-center justify-center bg-blue-500/20 rounded">
+          <div className="flex items-center gap-0.5 text-blue-400">
+            <ArrowLeft className="w-3 h-3" />
+            <span className="text-[9px] uppercase">DEVANT</span>
           </div>
-        )}
-      </div>
-    </div>
-
-
-        {/* === BOTTOM ROW (Gaps) === */ }
-
-  {/* DRIVER AHEAD (Cols 1-4) */ }
-  <div className="col-span-4 bg-blue-500/10 rounded-xl border border-blue-500/20 p-3 relative flex flex-col justify-between">
-    <div className="absolute top-2 left-3 flex items-center gap-1">
-      <ArrowLeft className="w-4 h-4 text-blue-500" />
-      <span className="text-xs font-bold text-blue-500 uppercase">Devant</span>
-    </div>
-
-    {driverAhead ? (
-      <div className="flex-1 flex flex-col items-center justify-center">
-        <div className="flex items-baseline gap-2">
-          <span className="text-5xl font-racing font-bold text-white">P{driverAhead.position}</span>
-          <span className="text-xl text-white/50">#{driverAhead.kart}</span>
+          {driverAhead ? (
+            <>
+              <span className="text-2xl font-bold leading-none">P{driverAhead.position}</span>
+              <span className="text-[10px] text-muted-foreground">K#{driverAhead.kart}</span>
+              <span className="text-base font-mono text-blue-400 leading-none">
+                {driverAhead.interval ? `-${driverAhead.interval}` : myDriver.interval || '--'}
+              </span>
+            </>
+          ) : (
+            <span className="text-green-400 font-bold text-lg">LEADER</span>
+          )}
         </div>
-        <span className="text-4xl font-mono font-bold text-blue-400 mt-2">
-          {driverAhead.interval ? `-${driverAhead.interval}` : (myDriver.interval || '--')}
-        </span>
-        <span className="text-xs text-blue-300/50 mt-1 uppercase max-w-full truncate">{driverAhead.team}</span>
-      </div>
-    ) : (
-      <div className="flex-1 flex items-center justify-center">
-        <span className="text-3xl font-racing text-green-500 animate-pulse">LEADER</span>
-      </div>
-    )}
-  </div>
 
-  {/* GAP LEADER / RACE INFO (Cols 5-8) */ }
-  <div className="col-span-4 bg-card/20 rounded-xl border border-white/5 flex flex-col items-center justify-center p-4">
-    <span className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Gap Leader</span>
-    <span className="text-6xl font-mono font-bold text-white tracking-tighter">
-      {myDriver.gap || '+0.000'}
-    </span>
-    <div className="mt-4 flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full">
-      <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-      <span className="text-xs font-mono text-white/70">
-        {formatTime(raceTimeRemaining)} restants
-      </span>
-    </div>
-  </div>
-
-  {/* DRIVER BEHIND (Cols 9-12) */ }
-  <div className="col-span-4 bg-red-500/10 rounded-xl border border-red-500/20 p-3 relative flex flex-col justify-between">
-    <div className="absolute top-2 right-3 flex items-center gap-1">
-      <span className="text-xs font-bold text-red-500 uppercase">Derrière</span>
-      <ArrowRight className="w-4 h-4 text-red-500" />
-    </div>
-
-    {driverBehind ? (
-      <div className="flex-1 flex flex-col items-center justify-center">
-        <div className="flex items-baseline gap-2">
-          <span className="text-5xl font-racing font-bold text-white">P{driverBehind.position}</span>
-          <span className="text-xl text-white/50">#{driverBehind.kart}</span>
+        {/* Écarts GAP / INTERVAL */}
+        <div className="col-span-6 row-span-1 flex items-center justify-around bg-card/50 rounded">
+          <div className="flex flex-col items-center">
+            <span className="text-[9px] text-muted-foreground uppercase">GAP LEADER</span>
+            <span className="text-2xl font-mono font-bold text-primary leading-none">
+              {myDriver.gap || '--'}
+            </span>
+          </div>
+          <div className="flex flex-col items-center">
+            <span className="text-[9px] text-muted-foreground uppercase">INTERVAL</span>
+            <span className="text-2xl font-mono font-bold text-white leading-none">
+              {myDriver.interval || '--'}
+            </span>
+          </div>
         </div>
-        <span className="text-4xl font-mono font-bold text-red-500 mt-2">
-          {driverBehind.interval ? `+${driverBehind.interval}` : '+--'}
-        </span>
-        <span className="text-xs text-red-300/50 mt-1 uppercase max-w-full truncate">{driverBehind.team}</span>
+
+        {/* Pit Timer */}
+        <div
+          className={`col-span-2 row-span-1 flex flex-col items-center justify-center rounded ${isPitting ? 'bg-orange-500/30' : 'bg-card/50'
+            }`}
+        >
+          <div className="flex items-center gap-0.5 text-orange-400">
+            <Gauge className="w-3 h-3" />
+            <span className="text-[9px] uppercase">PIT</span>
+          </div>
+          <span className={`text-3xl font-mono font-bold leading-none ${isPitting ? 'text-orange-400' : 'text-white'}`}>
+            {isPitting ? `${pitTimer}s` : '--'}
+          </span>
+          <span className="text-[9px] text-muted-foreground">{myDriver.pits || '0'}/5</span>
+        </div>
+
+        {/* Kart derrière */}
+        <div className="col-span-2 row-span-1 flex flex-col items-center justify-center bg-red-500/20 rounded">
+          <div className="flex items-center gap-0.5 text-red-400">
+            <span className="text-[9px] uppercase">DERRIÈRE</span>
+            <ArrowRight className="w-3 h-3" />
+          </div>
+          {driverBehind ? (
+            <>
+              <span className="text-2xl font-bold leading-none">P{driverBehind.position}</span>
+              <span className="text-[10px] text-muted-foreground">K#{driverBehind.kart}</span>
+              <span className="text-base font-mono text-red-400 leading-none">+{driverBehind.interval || '--'}</span>
+            </>
+          ) : (
+            <span className="text-muted-foreground font-bold text-lg">DERNIER</span>
+          )}
+        </div>
+
       </div>
-    ) : (
-      <div className="flex-1 flex items-center justify-center">
-        <span className="text-2xl font-racing text-white/30">DERNIER</span>
-      </div>
-    )}
-  </div>
-      </div >
-    </div >
+    </div>
   );
 }
