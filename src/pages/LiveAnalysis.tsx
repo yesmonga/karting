@@ -72,7 +72,21 @@ export default function LiveAnalysis() {
 
     const checkExistingSession = async () => {
       try {
-        const data = await liveSessions.getByUser(ANONYMOUS_USER_ID);
+        // 1. Check URL parameters first
+        const params = new URLSearchParams(window.location.search);
+        const urlSessionId = params.get('sessionId');
+
+        let data = null;
+
+        if (urlSessionId) {
+          console.log(`Loading session from URL: ${urlSessionId}`);
+          data = await liveSessions.getById(urlSessionId);
+        }
+
+        // 2. Fallback to latest user session if not found in URL
+        if (!data) {
+          data = await liveSessions.getByUser(ANONYMOUS_USER_ID);
+        }
 
         if (data) {
           setSavedSession({
@@ -85,6 +99,14 @@ export default function LiveAnalysis() {
             circuit_id: data.circuit_id,
             created_at: data.created_at,
           });
+
+          // Ensure URL is synced if we loaded from 'latest'
+          if (!urlSessionId) {
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.set('sessionId', data.id);
+            window.history.replaceState({}, '', newUrl);
+          }
+
           setStep('resume');
         } else {
           setStep('setup');
@@ -120,6 +142,11 @@ export default function LiveAnalysis() {
       const result = await liveSessions.save(sessionData);
       if (result && !sessionId) {
         setSessionId(result.id);
+        // INFO: Update URL with new session ID
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set('sessionId', result.id);
+        window.history.replaceState({}, '', newUrl);
+        console.log('Session created, URL updated:', result.id);
       }
       return result?.id || null;
     } catch (error) {
