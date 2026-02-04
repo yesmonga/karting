@@ -313,9 +313,9 @@ export function LiveDashboard({
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto max-h-[800px] overflow-y-auto scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent">
                           <table className="w-full text-sm">
-                            <thead>
+                            <thead className="sticky top-0 bg-background/95 backdrop-blur z-10">
                               <tr className="border-b border-border text-muted-foreground">
                                 <th className="text-left py-2 px-1">Pos</th>
                                 <th className="text-left py-2 px-1">Kart</th>
@@ -327,7 +327,7 @@ export function LiveDashboard({
                               </tr>
                             </thead>
                             <tbody>
-                              {liveData?.drivers.slice(0, 20).map((driver) => {
+                              {liveData?.drivers.map((driver) => {
                                 const isMe = driver.kart === selectedKart;
                                 return (
                                   <tr
