@@ -34,15 +34,16 @@ export const CURRENT_DRIVER = OUR_DRIVERS[0]; // ALEX
 
 // ============ CLASSEMENT FICTIF (10 équipes) ============
 
-const BASE_LAP_TIME = 66.5; // 1:06.500 en secondes
+const BASE_LAP_TIME = 66.5; // 1:06.500 (Moyenne entre 1:06 et 1:07)
 
-function generateSectorTime(base: number, variance: number = 0.5): string {
+function generateSectorTime(base: number, variance: number = 0.3): string {
   const time = base + (Math.random() - 0.5) * variance;
   return time.toFixed(3);
 }
 
 function generateLapTime(baseSeconds: number): string {
-  const variance = (Math.random() - 0.5) * 2; // +/- 1 seconde
+  // Variance réduite pour rester proche de 1:06 - 1:07
+  const variance = (Math.random() - 0.5) * 1.0; // +/- 0.5 seconde (66.0 à 67.0)
   const total = baseSeconds + variance;
   const mins = Math.floor(total / 60);
   const secs = (total % 60).toFixed(3);
@@ -101,16 +102,16 @@ export function generateMockDrivers(): ApexDriverData[] {
     const position = index + 1;
     const lapTimeBase = BASE_LAP_TIME / t.skill;
     const isUs = t.kart === MOCK_CONFIG.ourKart;
-    
+
     // Secteurs avec indicateurs de performance
     const s1Base = 24.0 + (1 - t.skill) * 2;
     const s2Base = 20.0 + (1 - t.skill) * 1.5;
     const s3Base = 22.5 + (1 - t.skill) * 2;
-    
+
     let s1 = generateSectorTime(s1Base);
     let s2 = generateSectorTime(s2Base);
     let s3 = generateSectorTime(s3Base);
-    
+
     // Ajouter des indicateurs visuels (violet = meilleur absolu, vert = meilleur perso)
     if (isUs) {
       if (Math.random() > 0.7) s1 = '🟢' + s1;
@@ -144,7 +145,7 @@ let lastUpdateTime = 0;
 
 export function getMockLiveData(): ApexLiveData {
   const now = Date.now();
-  
+
   // Mettre à jour les données toutes les 2 secondes
   if (!mockDriversCache || now - lastUpdateTime > 2000) {
     mockDriversCache = generateMockDrivers();
@@ -238,9 +239,9 @@ export async function sendMockMessage(text: string): Promise<void> {
 // S'abonner aux messages avec polling sur l'API
 export function subscribeMockMessages(listener: MessageListener): () => void {
   messageListeners.add(listener);
-  
+
   let lastMessageId = 0;
-  
+
   // Polling API toutes les 500ms
   const pollInterval = setInterval(async () => {
     try {
@@ -257,7 +258,7 @@ export function subscribeMockMessages(listener: MessageListener): () => void {
       // Ignore fetch errors
     }
   }, 500);
-  
+
   return () => {
     messageListeners.delete(listener);
     clearInterval(pollInterval);
