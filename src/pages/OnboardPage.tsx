@@ -82,18 +82,6 @@ export default function OnboardPage() {
     );
   }
 
-  const content = (
-    <OnboardDisplay
-      myDriver={myDriver}
-      myDetails={myDetails}
-      driverAhead={driverAhead}
-      driverBehind={driverBehind}
-      latestMessage={latestMessage}
-      raceTimeRemaining={liveData?.raceTimeRemaining || 0}
-      onChangeKart={() => setSelectedKart('')}
-    />
-  );
-
   return (
     <OnboardDisplay
       myDriver={myDriver}
