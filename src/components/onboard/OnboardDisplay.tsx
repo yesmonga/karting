@@ -130,7 +130,6 @@ export function OnboardDisplay({
   const bestS3 = myDetails?.bestSectors?.s3 || 0;
 
   return (
-  return (
     <div className="fixed inset-0 bg-black text-white overflow-hidden font-sans select-none p-2">
       {/* Settings Button */}
       <button
