@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
 
-export type SectionId = 
+export type SectionId =
   | 'ai-advisor'
   | 'sector-analysis'
   | 'best-times'
   | 'sector-comparison'
   | 'gap-chart'
   | 'pit-window'
-  | 'standings';
+  | 'standings'
+  | 'header'
+  | 'stats'
+  | 'track-map';
 
 export interface SectionConfig {
   id: SectionId;
@@ -61,7 +64,7 @@ export function useLayoutCustomizer() {
   };
 
   const toggleVisibility = (id: SectionId) => {
-    setSections(sections.map(s => 
+    setSections(sections.map(s =>
       s.id === id ? { ...s, visible: !s.visible } : s
     ));
   };

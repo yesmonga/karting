@@ -21,6 +21,7 @@ import { SectorAnalysis } from './SectorAnalysis';
 import { PitWindowIndicator } from './PitWindowIndicator';
 import { LayoutCustomizer } from './LayoutCustomizer';
 import { QRCodeShare } from './QRCodeShare';
+import { MiniTrackMap } from './MiniTrackMap';
 import { BestTimes } from '@/components/race/BestTimes';
 import { SectorComparisonChart } from '@/components/race/SectorComparisonChart';
 import { LapHistory } from '@/components/race/LapHistory';
@@ -262,6 +263,25 @@ export function LiveDashboard({
               switch (sectionId) {
                 case 'ai-advisor':
                   return <AIAdvisorPanel key={sectionId} advices={aiAdvices} />;
+                case 'track-map':
+                  return liveData?.drivers && liveData.drivers.length > 0 ? (
+                    <Card key={sectionId} className="glass-card">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="font-racing flex items-center gap-2 text-sm">
+                          <Car className="w-4 h-4 text-primary" />
+                          Live Tracking
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <MiniTrackMap
+                          drivers={liveData.drivers}
+                          selectedKart={selectedKart}
+                          circuitId={circuitId}
+                          showLabels={true}
+                        />
+                      </CardContent>
+                    </Card>
+                  ) : null;
                 case 'sector-analysis':
                   const { s1, s2, s3 } = calculateRealSectors(
                     myTeam?.s1 || '',
